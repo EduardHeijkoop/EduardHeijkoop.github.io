@@ -21,9 +21,9 @@ minimal_mistakes_skin: "dark" # "default", "air", "aqua", "contrast", "dark", "d
 # =============================================================================
 author:
   name: "Eduard Heijkoop"
-  avatar: "/assets/images/avatar.jpg"
+  avatar: "/assets/images/headshot_square.jpg"
   bio: "Remote sensing researcher focused on high-resolution DEMs and sea level rise impact on coastal communities."
-  location: "Netherlands / USA"
+  location: "Brooklyn, NY"
   email: # add your email
   links:
     - label: "GitHub"
@@ -34,10 +34,10 @@ author:
       url: "#"
     - label: "LinkedIn"
       icon: "fab fa-fw fa-linkedin"
-      url: "#"
+      url: "https://www.linkedin.com/in/eduardheijkoop/"
     - label: "Twitter/X"
       icon: "fab fa-fw fa-twitter"
-      url: "#"
+      url: "https://x.com/EduardHeijkoop"
 
 # =============================================================================
 # READING FILES
