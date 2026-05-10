@@ -1,0 +1,188 @@
+# =============================================================================
+# SITE SETTINGS
+# =============================================================================
+title: "Eduard Heijkoop"
+title_separator: "|"
+subtitle: "Remote Sensing & Sea Level Rise"
+name: "Eduard Heijkoop"
+description: "Researcher specializing in high-resolution digital elevation models for sea level rise impact studies. Using satellite imagery and remote sensing to understand coastal vulnerability."
+url: "https://eduardheijkoop.github.io"
+baseurl: ""
+repository: "EduardHeijkoop/EduardHeijkoop.github.io"
+
+# =============================================================================
+# THEME
+# =============================================================================
+remote_theme: mmistakes/minimal-mistakes@4.26.2
+minimal_mistakes_skin: "dark" # "default", "air", "aqua", "contrast", "dark", "dirt", "neon", "mint", "plum", "sunrise"
+
+# =============================================================================
+# SITE AUTHOR
+# =============================================================================
+author:
+  name: "Eduard Heijkoop"
+  avatar: "/assets/images/avatar.jpg"
+  bio: "Remote sensing researcher focused on high-resolution DEMs and sea level rise impact on coastal communities."
+  location: "Netherlands / USA"
+  email: # add your email
+  links:
+    - label: "GitHub"
+      icon: "fab fa-fw fa-github"
+      url: "https://github.com/EduardHeijkoop"
+    - label: "Google Scholar"
+      icon: "fas fa-fw fa-graduation-cap"
+      url: "#"
+    - label: "LinkedIn"
+      icon: "fab fa-fw fa-linkedin"
+      url: "#"
+    - label: "Twitter/X"
+      icon: "fab fa-fw fa-twitter"
+      url: "#"
+
+# =============================================================================
+# READING FILES
+# =============================================================================
+include:
+  - .htaccess
+  - _pages
+  - _portfolio
+
+exclude:
+  - "*.sublime-project"
+  - "*.sublime-workspace"
+  - vendor
+  - .asset-cache
+  - .bundle
+  - .jekyll-assets-cache
+  - .sass-cache
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+
+# =============================================================================
+# CONVERSION
+# =============================================================================
+markdown: kramdown
+highlighter: rouge
+lsi: false
+excerpt_separator: "\n\n"
+incremental: false
+
+kramdown:
+  input: GFM
+  hard_wrap: false
+  auto_ids: true
+  footnote_nr: 1
+  entity_output: as_char
+  toc_levels: 1..6
+  smart_quotes: lsquo,rsquo,ldquo,rdquo
+  enable_coderay: false
+
+# =============================================================================
+# COLLECTIONS
+# =============================================================================
+collections:
+  portfolio:
+    output: true
+    permalink: /:collection/:path/
+
+# =============================================================================
+# DEFAULTS
+# =============================================================================
+defaults:
+  # _posts
+  - scope:
+      path: ""
+      type: posts
+    values:
+      layout: single
+      author_profile: true
+      read_time: true
+      comments: false
+      share: true
+      related: true
+      toc: true
+      toc_sticky: true
+  # _pages
+  - scope:
+      path: "_pages"
+      type: pages
+    values:
+      layout: single
+      author_profile: true
+  # _portfolio
+  - scope:
+      path: ""
+      type: portfolio
+    values:
+      layout: single
+      author_profile: false
+      share: true
+
+# =============================================================================
+# ARCHIVES
+# =============================================================================
+category_archive:
+  type: liquid
+  path: /categories/
+tag_archive:
+  type: liquid
+  path: /tags/
+
+# =============================================================================
+# PLUGINS
+# =============================================================================
+plugins:
+  - jekyll-paginate
+  - jekyll-sitemap
+  - jekyll-gist
+  - jekyll-feed
+  - jekyll-include-cache
+  - jekyll-remote-theme
+
+whitelist:
+  - jekyll-paginate
+  - jekyll-sitemap
+  - jekyll-gist
+  - jekyll-feed
+  - jekyll-include-cache
+  - jekyll-remote-theme
+
+# =============================================================================
+# PAGINATION
+# =============================================================================
+paginate: 5
+paginate_path: /blog/page:num/
+
+# =============================================================================
+# FOOTER
+# =============================================================================
+footer:
+  links:
+    - label: "GitHub"
+      icon: "fab fa-fw fa-github"
+      url: "https://github.com/EduardHeijkoop"
+    - label: "LinkedIn"
+      icon: "fab fa-fw fa-linkedin"
+      url: "#"
+
+# =============================================================================
+# ANALYTICS
+# =============================================================================
+# analytics:
+#   provider: "google-gtag"
+#   google:
+#     tracking_id: "UA-XXXXXXXXX-X"
+
+# =============================================================================
+# SASS
+# =============================================================================
+sass:
+  sass_dir: _sass
+  style: compressed
+
+# =============================================================================
+# OUTPUT
+# =============================================================================
+permalink: /:categories/:title/
+timezone: "Europe/Amsterdam"

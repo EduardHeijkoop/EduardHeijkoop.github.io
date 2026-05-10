@@ -1,0 +1,112 @@
+---
+title: "Vertical Land Motion from InSAR & GPS"
+excerpt: "Measuring anthropogenic and tectonic subsidence in coastal cities using Sentinel-1 InSAR time series combined with GPS benchmarks."
+header:
+  image: /assets/images/portfolio-insar.jpg
+  teaser: /assets/images/portfolio-insar-th.jpg
+tags:
+  - InSAR
+  - Sentinel-1
+  - GPS
+  - Subsidence
+  - Python
+sidebar:
+  - title: "Sensors"
+    text: "Sentinel-1 A/B, GPS CORS network"
+  - title: "Method"
+    text: "SBAS InSAR, PS-InSAR, GPS velocity fields"
+  - title: "Tools"
+    text: "SNAP, StaMPS, MintPy, Python"
+toc: true
+toc_sticky: true
+---
+
+## Overview
+
+**Vertical land motion (VLM)** — the sinking or rising of land — dramatically modulates the *relative* sea level experienced by coastal communities. Cities like Jakarta, Ho Chi Minh City, and Houston are sinking at rates of 2–10 cm/yr due to groundwater extraction, hydrocarbon withdrawal, and sediment compaction, making local sea level rise effectively much faster than the global mean.
+
+This project uses **Sentinel-1 Interferometric SAR (InSAR) time series** combined with **continuous GPS** to measure VLM across coastal megacities and low-lying deltas.
+
+## Interactive VLM Map
+
+<iframe 
+  src="/assets/maps/vlm_map.html" 
+  width="100%" 
+  height="520" 
+  frameborder="0"
+  style="border-radius: 8px; margin: 1rem 0;">
+</iframe>
+
+*GPS station velocities (arrows) and InSAR-derived subsidence rates (color ramp, cm/yr). Negative values = subsidence. Click stations for time series.*
+
+## Methodology
+
+### Sentinel-1 SBAS Processing
+
+We process 3–5 years of Sentinel-1 A/B acquisitions using the Small Baseline Subset (SBAS) approach:
+
+1. **Coregistration** — all SLCs co-registered to a single master scene
+2. **Interferogram formation** — pairs selected with Bperp < 150 m, Btemp < 60 days
+3. **Phase unwrapping** — SNAPHU with statistical cost function
+4. **Atmospheric correction** — ERA5 tropospheric delay model
+5. **Time series inversion** — SBAS least-squares for LOS velocity field
+6. **GPS calibration** — reference field to GPS CORS velocities
+
+### Decomposing LOS into Vertical
+
+With ascending and descending geometries:
+
+```python
+import numpy as np
+
+def decompose_los_to_vertical(asc_los, desc_los, 
+                               asc_inc=39, desc_inc=41,
+                               asc_az=350, desc_az=190):
+    """
+    Decompose ascending + descending LOS velocities to vertical.
+    Assumes negligible E-W motion (valid for subsidence-dominated areas).
+    
+    All angles in degrees.
+    """
+    inc_a = np.radians(asc_inc)
+    inc_d = np.radians(desc_inc)
+    az_a  = np.radians(asc_az)
+    az_d  = np.radians(desc_az)
+    
+    # Unit vectors: [E, N, Up]
+    u_a = [-np.sin(inc_a)*np.sin(az_a),
+           -np.sin(inc_a)*np.cos(az_a),
+            np.cos(inc_a)]
+    u_d = [-np.sin(inc_d)*np.sin(az_d),
+           -np.sin(inc_d)*np.cos(az_d),
+            np.cos(inc_d)]
+    
+    # Solve for vertical assuming horizontal negligible
+    # v_los = cos(inc) * v_up  =>  v_up = v_los / cos(inc)
+    v_up_from_asc  = asc_los  / np.cos(inc_a)
+    v_up_from_desc = desc_los / np.cos(inc_d)
+    
+    # Weighted average
+    v_vertical = 0.5 * (v_up_from_asc + v_up_from_desc)
+    return v_vertical
+```
+
+## Results: Jakarta Case Study
+
+Jakarta is one of the fastest-sinking cities on Earth. Our InSAR analysis (2016–2023) reveals:
+
+- Maximum subsidence rate: **−8.5 cm/yr** in North Jakarta
+- Spatial extent of >4 cm/yr subsidence: **~210 km²**
+- Clear correlation with groundwater well density (r = 0.71)
+- Effective relative SLR in North Jakarta: **3.3 mm/yr (global) + 85 mm/yr (VLM) = ~88 mm/yr**
+
+| District | VLM (cm/yr) | Rel. SLR by 2050 (cm) |
+|----------|-------------|----------------------|
+| North Jakarta | −8.1 | 135 |
+| West Jakarta | −4.3 | 76 |
+| Central Jakarta | −2.1 | 47 |
+| South Jakarta | −0.8 | 29 |
+
+## Code & Data
+
+Processing scripts and InSAR velocity fields available on [GitHub](https://github.com/EduardHeijkoop). Raw Sentinel-1 data available via ESA's Copernicus Open Access Hub.

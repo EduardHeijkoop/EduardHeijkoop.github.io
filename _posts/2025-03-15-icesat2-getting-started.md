@@ -1,0 +1,151 @@
+---
+title: "Getting Started with ICESat-2 ATL03 Photon Data in Python"
+date: 2025-03-15
+categories:
+  - Tutorial
+tags:
+  - ICESat-2
+  - Python
+  - LiDAR
+  - HDF5
+header:
+  teaser: /assets/images/post-icesat2-thumb.jpg
+excerpt: "A step-by-step guide to downloading, reading, and filtering ICESat-2 ATL03 photon data for coastal elevation studies."
+---
+
+ICESat-2 has revolutionized our ability to measure surface elevation from space. Its photon-counting LiDAR achieves decimeter-level vertical accuracy at a dense along-track sampling (~70 cm), making it ideal for mapping low-lying coastal terrain where traditional radar altimetry fails.
+
+In this post, I'll walk through the full workflow from data download to cleaned elevation profiles.
+
+## 1. Data Access
+
+ICESat-2 data is freely available through NASA's [NSIDC DAAC](https://nsidc.org/data/icesat-2). I recommend using `icepyx` for programmatic access:
+
+```bash
+pip install icepyx h5py numpy pandas geopandas matplotlib
+```
+
+```python
+import icepyx as ipx
+
+# Define your region of interest and time range
+region = ipx.Query(
+    dataset      = 'ATL03',
+    spatial_extent = [-91.5, 29.0, -89.0, 30.5],  # Louisiana coast
+    date_range   = ['2023-01-01', '2023-12-31'],
+    start_time   = '00:00:00',
+    end_time     = '23:59:59'
+)
+
+region.avail_granules()
+region.order_granules()
+region.download_granules('/data/icesat2/')
+```
+
+## 2. Reading ATL03 HDF5 Files
+
+ATL03 stores data in a beam-organized HDF5 hierarchy. ICESat-2 has 3 pairs of beams (gt1, gt2, gt3), each with a left (l) and right (r) beam. Strong beams carry ~4× more photons than weak beams.
+
+```python
+import h5py
+import numpy as np
+import pandas as pd
+
+def read_atl03_beam(filepath, beam='gt1l'):
+    """Read photon data from a single ATL03 beam."""
+    with h5py.File(filepath, 'r') as f:
+        # Check if beam exists
+        if beam not in f:
+            return None
+        
+        grp = f[f'{beam}/heights']
+        
+        df = pd.DataFrame({
+            'lon':  grp['lon_ph'][:],
+            'lat':  grp['lat_ph'][:],
+            'h':    grp['h_ph'][:],       # WGS84 ellipsoidal height
+            'conf': grp['signal_conf_ph'][:, 0],  # land conf
+            'dist': grp['dist_ph_along'][:]
+        })
+        
+        # Beam strength (needed to identify strong vs weak)
+        sc_orient = f['orbit_info/sc_orient'][0]
+        beam_type = f[f'{beam}/geolocation/beam_type'][0].decode()
+        df['beam'] = beam
+        df['beam_type'] = beam_type
+        
+    return df
+```
+
+## 3. Filtering Signal Photons
+
+ATL03 provides a confidence flag (0–4) for land surface photons. For bare coastal terrain, `conf >= 3` works well. In vegetated areas, you may want to use ATL08 land/veg classification.
+
+```python
+def filter_signal_photons(df, conf_min=3, h_min=-10, h_max=50):
+    """
+    Filter to likely ground photons.
+    
+    conf_min : minimum confidence (3 = medium, 4 = high)
+    h_min/h_max : rough elevation range to exclude noise
+    """
+    mask = (
+        (df['conf'] >= conf_min) &
+        (df['h'] > h_min) &
+        (df['h'] < h_max)
+    )
+    return df[mask].copy()
+```
+
+## 4. Converting to Mean Sea Level
+
+ATL03 heights are referenced to the **WGS84 ellipsoid**. For coastal studies, you need heights above a geoid (e.g., EGM2008 or GEOID18).
+
+```python
+from pyproj import Transformer, CRS
+
+def ellipsoid_to_msl(df, geoid_grid_path):
+    """Subtract geoid undulation from ellipsoidal heights."""
+    import rasterio
+    from rasterio.sample import sample_gen
+    
+    with rasterio.open(geoid_grid_path) as src:
+        coords = list(zip(df['lon'], df['lat']))
+        geoid_N = np.array([val[0] for val in src.sample(coords)])
+    
+    df['h_msl'] = df['h'] - geoid_N
+    return df
+```
+
+## 5. Visualizing the Profile
+
+```python
+import matplotlib.pyplot as plt
+
+fig, axes = plt.subplots(2, 1, figsize=(14, 7), sharex=True)
+
+for beam, color in zip(['gt1l','gt1r'], ['#2ecc71','#3498db']):
+    df_beam = read_atl03_beam(filepath, beam)
+    df_filt = filter_signal_photons(df_beam)
+    
+    # All photons (noise)
+    axes[0].scatter(df_beam['dist'], df_beam['h'], 
+                    s=0.3, c='gray', alpha=0.3)
+    # Signal photons
+    axes[0].scatter(df_filt['dist'], df_filt['h'],
+                    s=1, c=color, alpha=0.8, label=beam)
+
+axes[0].set_ylabel('Height (m, WGS84)')
+axes[0].legend()
+axes[0].set_title('ICESat-2 ATL03 — Louisiana Coast')
+plt.tight_layout()
+plt.savefig('icesat2_profile.png', dpi=150)
+```
+
+## Next Steps
+
+In the [next post](/blog/dem-correction-from-icesat2/), I'll show how to use these filtered photon profiles to correct biases in existing DEMs (TanDEM-X, Copernicus) over coastal lowlands.
+
+---
+
+**Code:** All scripts from this post are available in the [`icesat2-tools`](https://github.com/EduardHeijkoop) repository on GitHub.

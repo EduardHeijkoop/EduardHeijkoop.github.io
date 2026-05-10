@@ -1,0 +1,199 @@
+---
+title: "Interactive Coastal Maps with Python Folium"
+date: 2024-11-05
+categories:
+  - Tutorial
+tags:
+  - Folium
+  - Python
+  - Visualization
+  - GIS
+header:
+  teaser: /assets/images/post-folium-thumb.jpg
+excerpt: "How I use Python's Folium library to create interactive geospatial visualizations for sea level rise and DEM analysis — and embed them directly in GitHub Pages."
+---
+
+Static maps are great for publications, but when you're exploring coastal flood extents or satellite coverage, **interactive maps** are a game-changer. In this post I'll share my Folium workflow for creating the kinds of embedded maps you see throughout this portfolio.
+
+## Why Folium?
+
+- Pure Python (no JavaScript knowledge needed)
+- Outputs self-contained HTML — easy to embed anywhere
+- Built on Leaflet.js — smooth, professional maps
+- Works seamlessly with GeoPandas / Shapely geometries
+- Great tile options: OpenStreetMap, CartoDB, Stamen, Esri
+
+## Basic Setup
+
+```python
+pip install folium geopandas branca
+```
+
+## 1. A Simple DEM Coverage Map
+
+```python
+import folium
+from folium import plugins
+
+# Base map — dark tiles look great for scientific data
+m = folium.Map(
+    location=[10.5, 106.0],   # Mekong Delta center
+    zoom_start=8,
+    tiles='CartoDB dark_matter',
+    width='100%',
+    height='100%'
+)
+
+# Add a scale bar
+plugins.MeasureControl(position='bottomleft').add_to(m)
+
+# Add fullscreen button
+plugins.Fullscreen().add_to(m)
+
+m.save('mekong_base.html')
+```
+
+## 2. Adding ICESat-2 Ground Tracks
+
+```python
+import geopandas as gpd
+import pandas as pd
+
+def add_icesat2_tracks(m, tracks_gdf, colormap='YlOrRd'):
+    """Add ICESat-2 ground tracks colored by acquisition date."""
+    from branca.colormap import linear
+    
+    # Create date colormap
+    dates = pd.to_datetime(tracks_gdf['date'])
+    date_num = (dates - dates.min()).dt.days
+    
+    cmap = linear.YlOrRd_09.scale(date_num.min(), date_num.max())
+    cmap.caption = 'ICESat-2 Acquisition Date'
+    
+    for _, row in tracks_gdf.iterrows():
+        d_num = (pd.to_datetime(row['date']) - dates.min()).days
+        color = cmap(d_num)
+        
+        folium.GeoJson(
+            row.geometry,
+            style_function=lambda x, c=color: {
+                'color': c,
+                'weight': 1.5,
+                'opacity': 0.8
+            },
+            tooltip=f"Date: {row['date']}<br>Beam: {row['beam']}"
+        ).add_to(m)
+    
+    cmap.add_to(m)
+    return m
+```
+
+## 3. Choropleth: Exposed Population by Province
+
+```python
+import json
+
+def add_population_choropleth(m, provinces_gdf, pop_column):
+    """Add population exposure choropleth."""
+    import branca.colormap as cm
+    
+    colormap = cm.LinearColormap(
+        colors=['#ffffcc', '#fd8d3c', '#800026'],
+        vmin=provinces_gdf[pop_column].min(),
+        vmax=provinces_gdf[pop_column].max(),
+        caption=f'Exposed Population ({pop_column})'
+    )
+    
+    folium.GeoJson(
+        provinces_gdf,
+        style_function=lambda feature: {
+            'fillColor': colormap(
+                feature['properties'][pop_column] or 0
+            ),
+            'color': 'white',
+            'weight': 0.5,
+            'fillOpacity': 0.7
+        },
+        tooltip=folium.GeoJsonTooltip(
+            fields=['province', pop_column],
+            aliases=['Province', 'Exposed Population'],
+            localize=True
+        )
+    ).add_to(m)
+    
+    colormap.add_to(m)
+    return m
+```
+
+## 4. Layer Control for SLR Scenarios
+
+The key to a good SLR comparison map is `FeatureGroup` + `LayerControl`:
+
+```python
+import folium
+from folium import FeatureGroup, LayerControl
+
+def create_slr_comparison_map(flood_polygons_dict, center):
+    """
+    flood_polygons_dict: {'0.5m': GeoDataFrame, '1.0m': GDF, '2.0m': GDF}
+    """
+    m = folium.Map(location=center, zoom_start=9,
+                   tiles='CartoDB positron')
+    
+    scenario_colors = {
+        '0.5m': {'fill': '#3498db', 'label': 'SLR +0.5 m'},
+        '1.0m': {'fill': '#e67e22', 'label': 'SLR +1.0 m'},
+        '2.0m': {'fill': '#e74c3c', 'label': 'SLR +2.0 m'},
+    }
+    
+    for scenario, gdf in flood_polygons_dict.items():
+        cfg = scenario_colors[scenario]
+        fg = FeatureGroup(name=cfg['label'], show=(scenario == '1.0m'))
+        
+        folium.GeoJson(
+            gdf.__geo_interface__,
+            style_function=lambda x, c=cfg['fill']: {
+                'fillColor': c,
+                'color': c,
+                'fillOpacity': 0.45,
+                'weight': 0.3
+            }
+        ).add_to(fg)
+        
+        fg.add_to(m)
+    
+    LayerControl(collapsed=False).add_to(m)
+    return m
+```
+
+## 5. Embedding in Jekyll / GitHub Pages
+
+Save the Folium map as HTML and put it in `assets/maps/`:
+
+```bash
+m.save('assets/maps/slr_impact.html')
+```
+
+Then in your Markdown:
+
+```html
+<iframe 
+  src="/assets/maps/slr_impact.html" 
+  width="100%" 
+  height="500" 
+  frameborder="0">
+</iframe>
+```
+
+One gotcha: Folium generates full HTML pages with `<html>` and `<head>` tags. This works fine in iframes, but if you want inline embedding you'll need `branca.element.Figure` to generate just the map div. For most use cases, iframes are the simplest approach.
+
+## Pro Tips
+
+- Use `prefer_canvas=True` in `folium.Map()` for large point datasets (>10k points)
+- Convert large GeoDataFrames to GeoJSON strings first — it's faster than passing the GDF directly
+- Use `folium.plugins.MarkerCluster` for many point markers
+- `CartoDB dark_matter` and `CartoDB positron` are ideal for scientific maps — clean, no clutter
+
+---
+
+All map generation scripts for this portfolio are available on [GitHub](https://github.com/EduardHeijkoop). Feel free to fork and adapt for your own coastal research.

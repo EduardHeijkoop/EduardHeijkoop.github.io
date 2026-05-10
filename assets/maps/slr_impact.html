@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+<style>
+  html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: #0d1117; }
+  #map { position: absolute; top: 0; bottom: 0; right: 0; left: 0; }
+  .info { padding: 10px 14px; background: rgba(13,17,23,0.92); border-radius: 8px; color: #e0e0e0; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.7; border: 1px solid #30363d; }
+  .info h4 { margin: 0 0 6px; color: #58a6ff; font-size: 13px; }
+  .scenario-btn { display: inline-block; margin: 2px; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; border: 1px solid transparent; transition: opacity 0.2s; }
+  .scenario-btn.active { border-color: white; }
+  .popup-content { font-family: 'Courier New', monospace; font-size: 12px; }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+</head>
+<body>
+<div id="map"></div>
+<script>
+
+var map = L.map('map', {
+  center: [12, 103],
+  zoom: 5,
+  zoomControl: true,
+  preferCanvas: true
+});
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap &copy; CartoDB',
+  subdomains: 'abcd',
+  maxZoom: 19
+}).addTo(map);
+
+// Representative flood zone polygons (simplified coastal lowlands)
+// These represent schematic inundation areas for demonstration
+var floodZones = {
+  '0.5m': [
+    // Mekong Delta low areas
+    { coords: [[10.8,106.2],[10.5,106.8],[10.0,106.7],[9.8,106.3],[10.1,105.9],[10.5,105.8]], pop: 3200000, name: 'Mekong Delta (core)' },
+    // Bangkok coast
+    { coords: [[13.2,100.6],[13.1,100.9],[12.9,101.0],[12.8,100.7],[12.9,100.5]], pop: 850000, name: 'Bangkok coastal plain' },
+    // Manila Bay
+    { coords: [[14.7,120.5],[14.5,120.8],[14.3,120.7],[14.4,120.4],[14.6,120.3]], pop: 1100000, name: 'Manila Bay lowlands' },
+  ],
+  '1.0m': [
+    { coords: [[11.2,106.0],[10.5,107.2],[9.6,107.0],[9.3,106.2],[9.8,105.5],[10.7,105.4]], pop: 8800000, name: 'Mekong Delta (1m)' },
+    { coords: [[13.5,100.3],[13.1,101.1],[12.6,101.2],[12.5,100.6],[12.8,100.1],[13.2,100.0]], pop: 2100000, name: 'Bangkok coastal plain (1m)' },
+    { coords: [[14.9,120.3],[14.4,121.0],[14.0,120.9],[14.0,120.2],[14.4,119.9],[14.8,120.1]], pop: 2300000, name: 'Manila Bay (1m)' },
+    { coords: [[22.8,89.5],[22.5,90.5],[22.0,90.7],[21.7,90.2],[22.0,89.3],[22.4,89.2]], pop: 3400000, name: 'Bangladesh coast (1m)' },
+  ],
+  '2.0m': [
+    { coords: [[11.8,105.5],[10.5,107.8],[9.0,107.5],[8.8,105.8],[9.5,104.8],[11.2,104.7]], pop: 14500000, name: 'Mekong Delta (2m)' },
+    { coords: [[13.9,99.8],[13.1,101.5],[12.2,101.6],[12.0,100.2],[12.7,99.5],[13.5,99.6]], pop: 4200000, name: 'Bangkok region (2m)' },
+    { coords: [[15.2,119.8],[14.3,121.4],[13.7,121.2],[13.6,119.6],[14.2,119.2],[15.0,119.5]], pop: 4100000, name: 'Manila Bay (2m)' },
+    { coords: [[23.2,88.8],[22.5,91.0],[21.5,91.2],[21.2,89.8],[21.8,88.5],[22.8,88.4]], pop: 7800000, name: 'Bangladesh coast (2m)' },
+    { coords: [[-6.0,106.5],[-6.3,107.0],[-6.6,107.0],[-6.7,106.6],[-6.5,106.2],[-6.1,106.2]], pop: 2800000, name: 'Jakarta Bay (2m)' },
+  ]
+};
+
+var scenarioColors = {
+  '0.5m': '#f39c12',
+  '1.0m': '#e67e22',
+  '2.0m': '#e74c3c'
+};
+
+var scenarioLabels = {
+  '0.5m': 'SLR +0.5 m (340M exposed globally)',
+  '1.0m': 'SLR +1.0 m (620M exposed globally)',
+  '2.0m': 'SLR +2.0 m (1.1B exposed globally)'
+};
+
+var layers = {};
+Object.keys(floodZones).forEach(function(scenario) {
+  var lg = L.layerGroup();
+  floodZones[scenario].forEach(function(zone) {
+    L.polygon(zone.coords, {
+      color: scenarioColors[scenario],
+      fillColor: scenarioColors[scenario],
+      weight: 1,
+      opacity: 0.8,
+      fillOpacity: 0.35
+    })
+    .bindPopup('<div class="popup-content"><b>' + zone.name + '</b><br>' +
+      'Scenario: +' + scenario + '<br>' +
+      'Exposed pop: <b>' + (zone.pop/1e6).toFixed(1) + 'M</b></div>')
+    .addTo(lg);
+  });
+  layers[scenario] = lg;
+});
+
+// Add 1m layer by default
+layers['1.0m'].addTo(map);
+
+// Population bubble markers (major cities at risk)
+var cities = [
+  { lat: 10.45, lon: 106.62, name: 'Ho Chi Minh City', pop: 9, vlm: -1.5 },
+  { lat: 13.75, lon: 100.52, name: 'Bangkok', pop: 11, vlm: -2.0 },
+  { lat: 14.55, lon: 121.0,  name: 'Manila', pop: 14, vlm: -0.5 },
+  { lat: 23.73, lon: 90.40,  name: 'Dhaka', pop: 22, vlm: -1.0 },
+  { lat: -6.21, lon: 106.85, name: 'Jakarta', pop: 34, vlm: -8.5 },
+];
+
+cities.forEach(function(city) {
+  var r = Math.sqrt(city.pop) * 4;
+  L.circleMarker([city.lat, city.lon], {
+    radius: r,
+    color: '#7ec8e3',
+    fillColor: '#7ec8e3',
+    fillOpacity: 0.15,
+    weight: 1.5,
+    dashArray: '4'
+  })
+  .bindPopup('<div class="popup-content"><b>' + city.name + '</b><br>' +
+    'Metro pop: ' + city.pop + 'M<br>' +
+    'Subsidence: ' + city.vlm + ' cm/yr</div>')
+  .addTo(map);
+
+  L.circleMarker([city.lat, city.lon], {
+    radius: 4,
+    color: '#fff',
+    fillColor: '#7ec8e3',
+    fillOpacity: 0.9,
+    weight: 1
+  }).addTo(map);
+});
+
+// Control panel
+var info = L.control({position: 'topright'});
+info.onAdd = function() {
+  var div = L.DomUtil.create('div', 'info');
+  div.innerHTML = '<h4>SLR Scenario</h4>';
+  ['0.5m','1.0m','2.0m'].forEach(function(s) {
+    var active = s === '1.0m' ? ' active' : '';
+    div.innerHTML += '<div class="scenario-btn' + active + '" ' +
+      'style="background:' + scenarioColors[s] + ';color:#fff;" ' +
+      'id="btn-' + s + '" onclick="switchScenario(\'' + s + '\')">' +
+      '+' + s + '</div><br>';
+  });
+  div.innerHTML += '<div style="margin-top:8px;font-size:11px;color:#8b949e">' +
+    'Click zones for details<br>○ Circles = city exposure</div>';
+  return div;
+};
+info.addTo(map);
+
+// Legend
+var legend = L.control({position: 'bottomleft'});
+legend.onAdd = function() {
+  var div = L.DomUtil.create('div', 'info');
+  div.innerHTML = '<h4>Exposed Population</h4>' +
+    '<div style="color:#f39c12">█ +0.5 m &nbsp; 340M</div>' +
+    '<div style="color:#e67e22">█ +1.0 m &nbsp; 620M</div>' +
+    '<div style="color:#e74c3c">█ +2.0 m &nbsp; 1.1B</div>' +
+    '<div style="margin-top:6px;border-top:1px solid #30363d;padding-top:6px;color:#8b949e;font-size:10px">' +
+    'Corrected DEM · WorldPop 2020</div>';
+  return div;
+};
+legend.addTo(map);
+
+function switchScenario(scenario) {
+  Object.keys(layers).forEach(function(s) {
+    if (map.hasLayer(layers[s])) map.removeLayer(layers[s]);
+    document.getElementById('btn-' + s).classList.remove('active');
+  });
+  layers[scenario].addTo(map);
+  document.getElementById('btn-' + scenario).classList.add('active');
+}
+
+</script>
+</body>
+</html>

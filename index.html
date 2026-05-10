@@ -1,0 +1,42 @@
+---
+layout: home
+author_profile: true
+header:
+  overlay_color: "#000"
+  overlay_filter: "0.5"
+  overlay_image: /assets/images/header-coastal.jpg
+  caption: "LiDAR DEM — Coastal Louisiana"
+  actions:
+    - label: "View Portfolio"
+      url: "/portfolio/"
+    - label: "Read Blog"
+      url: "/blog/"
+excerpt: >
+  Mapping coastal vulnerability with centimeter-precision elevation models.<br>
+  High-resolution DEMs · Satellite remote sensing · Sea level rise.
+
+feature_row:
+  - image_path: /assets/images/feature-dem.jpg
+    alt: "Digital Elevation Models"
+    title: "High-Res DEMs"
+    excerpt: "Generating sub-meter accuracy digital elevation models from ICESat-2, TanDEM-X, and optical stereo imagery to assess flood exposure."
+    url: "/portfolio/"
+    btn_label: "See Projects"
+    btn_class: "btn--primary"
+  - image_path: /assets/images/feature-slr.jpg
+    alt: "Sea Level Rise"
+    title: "Sea Level Rise Impact"
+    excerpt: "Quantifying how many people and assets fall within the inundation zone under various IPCC sea level rise scenarios."
+    url: "/portfolio/sea-level-rise-impact/"
+    btn_label: "Learn More"
+    btn_class: "btn--primary"
+  - image_path: /assets/images/feature-satellite.jpg
+    alt: "Satellite Imagery"
+    title: "Satellite Analysis"
+    excerpt: "Processing Planet, Sentinel, and Landsat imagery for change detection, coastal erosion monitoring, and shoreline extraction."
+    url: "/blog/"
+    btn_label: "Read Posts"
+    btn_class: "btn--primary"
+---
+
+{% include feature_row %}

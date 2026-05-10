@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+<style>
+  html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: #0d1117; }
+  #map { position: absolute; top: 0; bottom: 0; right: 0; left: 0; }
+  .info { padding: 10px 14px; background: rgba(13,17,23,0.92); border-radius: 8px; color: #e0e0e0; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.6; border: 1px solid #30363d; }
+  .info h4 { margin: 0 0 5px; color: #58a6ff; font-size: 13px; }
+  .gradient-bar { width: 160px; height: 12px; background: linear-gradient(to right, #3498db, #2ecc71, #f1c40f, #e67e22, #e74c3c); border-radius: 3px; margin: 4px 0; }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+</head>
+<body>
+<div id="map"></div>
+<script>
+
+var map = L.map('map', {
+  center: [-6.2, 106.8],
+  zoom: 10,
+  zoomControl: true,
+  preferCanvas: true
+});
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap &copy; CartoDB',
+  subdomains: 'abcd',
+  maxZoom: 19
+}).addTo(map);
+
+// VLM color function: -10 cm/yr (red) to 0 cm/yr (blue)
+function vlmColor(rate) {
+  // rate is cm/yr (negative = subsidence)
+  var t = Math.max(0, Math.min(1, (-rate) / 10));
+  // Blue (stable) → Yellow → Red (heavy subsidence)
+  if (t < 0.25) {
+    var f = t / 0.25;
+    return rgbToHex(
+      Math.round(41 + f*(94-41)),
+      Math.round(182 + f*(201-182)),
+      Math.round(246 + f*(64-246))
+    );
+  } else if (t < 0.5) {
+    var f = (t - 0.25) / 0.25;
+    return rgbToHex(
+      Math.round(94 + f*(241-94)),
+      Math.round(201 + f*(196-201)),
+      Math.round(64 + f*(15-64))
+    );
+  } else if (t < 0.75) {
+    var f = (t - 0.5) / 0.25;
+    return rgbToHex(
+      Math.round(241 + f*(230-241)),
+      Math.round(196 + f*(81-196)),
+      Math.round(15 + f*(0-15))
+    );
+  } else {
+    var f = (t - 0.75) / 0.25;
+    return rgbToHex(
+      Math.round(230 + f*(231-230)),
+      Math.round(81 + f*(76-81)),
+      Math.round(0 + f*(60-0))
+    );
+  }
+}
+
+function rgbToHex(r, g, b) {
+  return '#' + [r,g,b].map(function(x){
+    return x.toString(16).padStart(2,'0');
+  }).join('');
+}
+
+// GPS stations in Jakarta area (representative)
+var gpsStations = [
+  // North Jakarta — heavy subsidence
+  { lat: -6.10, lon: 106.75, name: 'BAKO', vlm: -8.5, site: 'Pluit, N. Jakarta' },
+  { lat: -6.12, lon: 106.85, name: 'JKRT', vlm: -7.2, site: 'Penjaringan' },
+  { lat: -6.14, lon: 106.95, name: 'TNJP', vlm: -6.8, site: 'Tanjung Priok Port' },
+  { lat: -6.15, lon: 107.05, name: 'KLPA', vlm: -5.9, site: 'Kalapa district' },
+  // West Jakarta
+  { lat: -6.18, lon: 106.68, name: 'CENG', vlm: -5.1, site: 'Cengkareng' },
+  { lat: -6.22, lon: 106.72, name: 'GROG', vlm: -4.4, site: 'Grogol' },
+  // Central Jakarta
+  { lat: -6.19, lon: 106.82, name: 'MOEL', vlm: -2.8, site: 'Monas area' },
+  { lat: -6.21, lon: 106.88, name: 'CIKM', vlm: -2.1, site: 'Cikini' },
+  // East Jakarta
+  { lat: -6.19, lon: 106.97, name: 'KBYR', vlm: -3.3, site: 'Kebayoran' },
+  { lat: -6.22, lon: 107.02, name: 'BEKM', vlm: -1.9, site: 'Bekasi margin' },
+  // South Jakarta — less subsidence
+  { lat: -6.28, lon: 106.78, name: 'SRTJ', vlm: -1.2, site: 'S. Jakarta' },
+  { lat: -6.32, lon: 106.85, name: 'DEPK', vlm: -0.7, site: 'Depok' },
+  { lat: -6.30, lon: 106.92, name: 'JGWR', vlm: -0.9, site: 'Jatinegara' },
+];
+
+// Draw GPS station dots
+gpsStations.forEach(function(sta) {
+  var color = vlmColor(sta.vlm);
+  var r = 3 + Math.abs(sta.vlm) * 0.8;
+  
+  L.circleMarker([sta.lat, sta.lon], {
+    radius: r,
+    color: color,
+    fillColor: color,
+    fillOpacity: 0.85,
+    weight: 1.5
+  })
+  .bindPopup('<div style="font-family:monospace;font-size:12px;">' +
+    '<b>' + sta.name + '</b> — ' + sta.site + '<br>' +
+    'VLM: <b style="color:' + color + '">' + sta.vlm + ' cm/yr</b><br>' +
+    'Eff. rel. SLR: <b>' + Math.abs(sta.vlm + 3.7).toFixed(1) + ' mm/yr</b>' +
+    '</div>')
+  .addTo(map);
+  
+  // Arrow indicating subsidence magnitude
+  var arrowLen = Math.abs(sta.vlm) * 0.003;
+  L.polyline([
+    [sta.lat, sta.lon],
+    [sta.lat - arrowLen, sta.lon]
+  ], {
+    color: color,
+    weight: 1.5,
+    opacity: 0.7
+  }).addTo(map);
+});
+
+// InSAR coverage footprint (Sentinel-1 descending track)
+var insar_footprint = [
+  [-5.7, 106.3], [-5.7, 107.4],
+  [-6.7, 107.4], [-6.7, 106.3]
+];
+
+L.polygon(insar_footprint, {
+  color: '#58a6ff',
+  fillColor: '#58a6ff',
+  fillOpacity: 0.04,
+  weight: 1.5,
+  dashArray: '6 4'
+})
+.bindPopup('<div style="font-family:monospace;font-size:12px;"><b>Sentinel-1 Coverage</b><br>Descending track 047<br>2019–2024 · 78 acquisitions<br>6-day revisit</div>')
+.addTo(map);
+
+// Legend
+var legend = L.control({position: 'bottomright'});
+legend.onAdd = function() {
+  var div = L.DomUtil.create('div', 'info');
+  div.innerHTML = '<h4>Vertical Land Motion</h4>' +
+    '<div class="gradient-bar"></div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:10px;color:#8b949e;">' +
+    '<span>0 cm/yr</span><span>−10 cm/yr</span></div>' +
+    '<div style="margin-top:8px;border-top:1px solid #30363d;padding-top:6px;font-size:11px;color:#8b949e;">' +
+    '● GPS CORS stations<br>' +
+    '<span style="color:#58a6ff;font-size:11px;">┌─┐</span> Sentinel-1 footprint</div>';
+  return div;
+};
+legend.addTo(map);
+
+// Info panel
+var info = L.control({position: 'topleft'});
+info.onAdd = function() {
+  var div = L.DomUtil.create('div', 'info');
+  div.innerHTML = '<h4>Jakarta VLM Study</h4>' +
+    'InSAR time series 2019–2024<br>' +
+    'Max subsidence: <b style="color:#e74c3c">−8.5 cm/yr</b><br>' +
+    '<span style="font-size:10px;color:#8b949e;">Click stations for details</span>';
+  return div;
+};
+info.addTo(map);
+
+</script>
+</body>
+</html>

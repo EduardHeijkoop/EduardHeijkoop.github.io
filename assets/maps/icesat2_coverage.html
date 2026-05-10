@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+<script>
+  L_NO_TOUCH = false;
+  L_DISABLE_3D = false;
+</script>
+<style>
+  html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: #1a1a2e; }
+  #map { position: absolute; top: 0; bottom: 0; right: 0; left: 0; }
+  .legend { padding: 8px 12px; background: rgba(20,20,40,0.9); border-radius: 6px; color: #e0e0e0; font-family: monospace; font-size: 12px; line-height: 1.6; }
+  .legend-title { font-weight: bold; color: #7ec8e3; margin-bottom: 6px; }
+  .track-popup { font-family: monospace; font-size: 12px; color: #1a1a2e; }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+</head>
+<body>
+<div id="map"></div>
+<script>
+
+var map = L.map('map', {
+  center: [15, 100],
+  zoom: 4,
+  zoomControl: true,
+  preferCanvas: true
+});
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap &copy; CartoDB',
+  subdomains: 'abcd',
+  maxZoom: 19
+}).addTo(map);
+
+// Simulated ICESat-2 ground tracks (representative paths)
+var trackData = [
+  // Vietnam / Mekong Delta region
+  { coords: [[22, 103], [18, 105], [14, 107], [10, 108], [6, 109]], date: '2023-02-14', beam: 'gt2l', type: 'strong' },
+  { coords: [[22, 104.5], [18, 106.5], [14, 108.5], [10, 109.5], [6, 110.5]], date: '2023-03-01', beam: 'gt1r', type: 'weak' },
+  { coords: [[22, 101], [18, 103], [14, 105], [10, 106], [6, 107]], date: '2023-04-18', beam: 'gt3l', type: 'strong' },
+  // Bangladesh
+  { coords: [[27, 88], [24, 89.5], [21, 90.5], [18, 91], [15, 91.5]], date: '2023-01-05', beam: 'gt2r', type: 'weak' },
+  { coords: [[27, 90], [24, 91], [21, 92], [18, 92.5], [15, 93]], date: '2023-05-22', beam: 'gt1l', type: 'strong' },
+  // Thailand / Gulf
+  { coords: [[20, 99], [16, 100.5], [12, 101], [8, 101.5]], date: '2023-07-10', beam: 'gt3r', type: 'strong' },
+  // Indonesia
+  { coords: [[5, 95], [1, 102], [-3, 108], [-7, 113]], date: '2023-06-03', beam: 'gt2l', type: 'weak' },
+  { coords: [[5, 97], [1, 104], [-3, 110], [-7, 115]], date: '2023-08-25', beam: 'gt1l', type: 'strong' },
+  // Philippines
+  { coords: [[20, 120], [16, 121], [12, 122], [8, 122.5]], date: '2023-09-11', beam: 'gt3l', type: 'strong' },
+  { coords: [[20, 124], [16, 125], [12, 126], [8, 127]], date: '2023-11-30', beam: 'gt2r', type: 'weak' },
+];
+
+// Color by date (simple gradient: early = blue, late = red)
+function dateToColor(dateStr) {
+  var dates = ['2023-01-05','2023-02-14','2023-03-01','2023-04-18','2023-05-22','2023-06-03','2023-07-10','2023-08-25','2023-09-11','2023-11-30'];
+  var colors = ['#4ecdc4','#45b7d1','#96ceb4','#88d8b0','#ffeaa7','#fdcb6e','#e17055','#d63031','#c0392b','#e74c3c'];
+  var idx = dates.indexOf(dateStr);
+  return idx >= 0 ? colors[idx] : '#7ec8e3';
+}
+
+// Draw tracks
+trackData.forEach(function(track) {
+  var color = dateToColor(track.date);
+  var weight = track.type === 'strong' ? 2.5 : 1.2;
+  var opacity = track.type === 'strong' ? 0.9 : 0.55;
+  
+  L.polyline(track.coords, {
+    color: color,
+    weight: weight,
+    opacity: opacity,
+    smoothFactor: 1
+  })
+  .bindPopup('<div class="track-popup"><b>ICESat-2 Track</b><br>Date: ' + track.date + '<br>Beam: ' + track.beam + '<br>Type: ' + track.type + '</div>')
+  .addTo(map);
+});
+
+// Validation site markers
+var validationSites = [
+  { lat: 10.3, lon: 106.1, name: 'Mekong Delta', n: '89k photons', rmse: '0.27 m' },
+  { lat: 23.2, lon: 89.8, name: 'Ganges-Brahmaputra', n: '67k photons', rmse: '0.31 m' },
+  { lat: 13.8, lon: 100.5, name: 'Gulf of Thailand', n: '44k photons', rmse: '0.22 m' },
+  { lat: -6.2, lon: 106.8, name: 'Java (Jakarta)', n: '38k photons', rmse: '0.19 m' },
+];
+
+var siteIcon = L.divIcon({
+  className: '',
+  html: '<div style="width:12px;height:12px;background:#e74c3c;border:2px solid #fff;border-radius:50%;box-shadow:0 0 6px #e74c3c;"></div>',
+  iconSize: [12, 12],
+  iconAnchor: [6, 6]
+});
+
+validationSites.forEach(function(site) {
+  L.marker([site.lat, site.lon], {icon: siteIcon})
+   .bindPopup('<div class="track-popup"><b>' + site.name + '</b><br>Photons: ' + site.n + '<br>RMSE vs LiDAR: ' + site.rmse + '</div>')
+   .addTo(map);
+});
+
+// Legend
+var legend = L.control({position: 'bottomright'});
+legend.onAdd = function() {
+  var div = L.DomUtil.create('div', 'legend');
+  div.innerHTML = '<div class="legend-title">ICESat-2 Coverage</div>' +
+    '<div style="margin-bottom:4px"><span style="color:#4ecdc4">━</span> Jan 2023</div>' +
+    '<div style="margin-bottom:4px"><span style="color:#ffeaa7">━</span> May 2023</div>' +
+    '<div style="margin-bottom:4px"><span style="color:#e74c3c">━</span> Nov 2023</div>' +
+    '<div style="margin-top:8px;border-top:1px solid #444;padding-top:6px">' +
+    '<span style="color:#e74c3c">●</span> Validation site</div>';
+  return div;
+};
+legend.addTo(map);
+
+</script>
+</body>
+</html>
