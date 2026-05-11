@@ -29,12 +29,15 @@ author:
     - label: "GitHub"
       icon: "fab fa-fw fa-github"
       url: "https://github.com/EduardHeijkoop"
-    - label: "Google Scholar"
-      icon: "fas fa-fw fa-graduation-cap"
-      url: "#"
+    # - label: "Google Scholar"
+    #   icon: "fas fa-fw fa-graduation-cap"
+    #   url: "https://scholar.google.com/citations?user=XLk8u44AAAAJ&hl=en"
     - label: "LinkedIn"
       icon: "fab fa-fw fa-linkedin"
       url: "https://www.linkedin.com/in/eduardheijkoop/"
+    - label: "Bluesky"
+      icon: "fab fa-fw fa-bluesky"
+      url: "https://bsky.app/profile/eduardheijkoop.bsky.social"
     - label: "Twitter/X"
       icon: "fab fa-fw fa-twitter"
       url: "https://x.com/EduardHeijkoop"
@@ -164,7 +167,7 @@ footer:
       url: "https://github.com/EduardHeijkoop"
     - label: "LinkedIn"
       icon: "fab fa-fw fa-linkedin"
-      url: "#"
+      url: "https://www.linkedin.com/in/eduardheijkoop/"
 
 # =============================================================================
 # ANALYTICS
